@@ -1,0 +1,80 @@
+name: build
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # everyday at 10am
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+
+      - name: Get Version
+        id: version
+        run: |
+          echo "::set-output name=rdchoke_version::$(< ./VERSION)"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      #      - name: Login to DockerHub
+      #        if: github.event_name != 'pull_request'
+      #        uses: docker/login-action@v1
+      #        with:
+      #          username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      -
+        name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          logout: false
+
+      - name: Docker meta rdchoke-action
+        id: meta_rdchoke_action
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/agnos-ai/rdchoke-action
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push rdchoke-action
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/agnos-ai/rdchoke-action:${{ steps.version.outputs.rdchoke_version }}
+            ${{ steps.meta_rdchoke_action.outputs.tags }}
+          labels: |
+            org.opencontainers.image.description=rdchoke_action is a Github Action that can be used to run RDChoke
+            org.opencontainers.image.licenses=MIT
+            ${{ steps.meta_rdchoke_action.output.labels }}
