@@ -1,0 +1,40 @@
+name: 'RDChoke'
+description: 'Run RDChoke'
+inputs:
+  project:
+    description: 'Sets PROJECT_ID'
+    required: false
+  organization:
+    description: 'The organization code, usually 3 to 5 lowercase letters'
+    required: true
+  metadata-directory:
+    description: 'The root directory of your metadata'
+    required: true
+    default: '/github/workspace/metadata'
+  output-directory:
+    description: 'Where RDChoke generates test reports and before/after state turtle files'
+    required: true
+    default: '/github/workspace/rdchoke-output'
+  ekg-base-iri:
+    description: 'Sets EKG_KGIRI_BASE, for instance https://kg.agnos.ai'
+    required: true
+    default: 'https://kg.agnos.ai'
+  database-name:
+    description: 'The database where your stories are going to be executed (for test)'
+    required: true
+    default: 'test'
+  database-endpoint:
+    description: 'The triple store endpoint URL (not including the database name)'
+    required: true
+    default: 'https://localhost:5820'
+runs:
+  using: 'docker'
+  image: Dockerfile
+  args:
+    - ${{ inputs.project }}
+    - ${{ inputs.organization }}
+    - ${{ inputs.metadata-directory }}
+    - ${{ inputs.output-directory }}
+    - ${{ inputs.ekg-base-iri }}
+    - ${{ inputs.database-name }}
+    - ${{ inputs.database-endpoint }}
